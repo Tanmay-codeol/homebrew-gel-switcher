@@ -1,8 +1,8 @@
 class GelTools < Formula
   desc "Tools for managing Gel database instances (Docker remote connections)"
-  homepage "https://github.com/Tanmay-codeol/gel-switcher"
+  homepage "https://github.com/Tanmay-codeol/homebrew-gel-switcher"
   url "https://github.com/Tanmay-codeol/gel-switcher/archive/refs/tags/v1.0.0.tar.gz"
-  sha256 "f43a8cddf5a3fef2cb925728f2794f647b442c4b35c71624ef5c4e2712d6e7bb"
+  sha256 "c3372b47ade19ce6ad0550a92d68a8f2576f27ca3b658a85c35a4ca5db45f1c2"
   license "MIT"
 
   def install
