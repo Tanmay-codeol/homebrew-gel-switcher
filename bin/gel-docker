@@ -1,0 +1,73 @@
+#!/bin/bash
+
+# gel-docker - Connect to remote Gel Docker instance
+# Usage: gel-docker <port> [instance-name] [ip-address]
+
+set -e
+
+DEFAULT_INSTANCE_PREFIX="docker-remote"
+
+# Colors for output
+RED='\033[0;31m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+# Help function
+show_help() {
+    echo "Usage: gel-docker <port> <ip-address> [instance-name]"
+    echo ""
+    echo "Arguments:"
+    echo "  port           Port number for the remote Gel instance (required)"
+    echo "  ip-address     IP address of the remote server (required)"
+    echo "  instance-name  Name for the Gel instance (default: docker-remote-<port>)"
+    echo ""
+    echo "Examples:"
+    echo "  gel-docker port ip"
+    echo ""
+}
+
+# Check if help is requested
+if [[ "$1" == "-h" || "$1" == "--help" || $# -lt 2 ]]; then
+    show_help
+    exit 0
+fi
+
+# Parse arguments
+PORT="$1"
+IP_ADDRESS="$2"
+INSTANCE_NAME="${3:-${DEFAULT_INSTANCE_PREFIX}-${PORT}}"
+
+# Validate port number
+if ! [[ "$PORT" =~ ^[0-9]+$ ]] || [ "$PORT" -lt 1 ] || [ "$PORT" -gt 65535 ]; then
+    echo -e "${RED}Error: Invalid port number '$PORT'${NC}"
+    echo "Port must be a number between 1 and 65535"
+    exit 1
+fi
+
+echo -e "${BLUE}Connecting to Gel instance at ${IP_ADDRESS}:${PORT} as '${INSTANCE_NAME}'${NC}"
+
+# Test connection first
+if command -v nc >/dev/null 2>&1; then
+    if ! timeout 5 nc -z "$IP_ADDRESS" "$PORT" 2>/dev/null; then
+        echo -e "${RED}Error: Cannot connect to ${IP_ADDRESS}:${PORT}${NC}"
+        exit 1
+    fi
+else
+    echo "Warning: 'nc' not found, skipping connection test"
+fi
+
+# Unlink existing instance if it exists
+if gel instance list 2>/dev/null | grep -q "$INSTANCE_NAME"; then
+    gel instance unlink "$INSTANCE_NAME" 2>/dev/null || true
+fi
+
+# Link the new instance
+DSN="gel://${IP_ADDRESS}:${PORT}"
+
+if gel instance link --trust-tls-cert "$INSTANCE_NAME" --dsn "$DSN"; then
+    export GEL_INSTANCE="$INSTANCE_NAME"
+    echo "Connected to remote instance '${INSTANCE_NAME}'"
+else
+    echo -e "${RED}Failed to link instance${NC}"
+    exit 1
+fi

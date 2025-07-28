@@ -1,0 +1,59 @@
+#!/bin/bash
+
+# gel-switch - Switch back to local Gel instance
+# Usage: gel-switch [local-instance-name]
+
+set -e
+
+# Colors for output
+RED='\033[0;31m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+# Help function
+show_help() {
+    echo "Usage: gel-switch [local-instance-name]"
+    echo ""
+    echo "Arguments:"
+    echo "  local-instance-name  Name of the local instance to switch to (optional)"
+    echo ""
+    echo "Examples:"
+    echo "  gel-switch"
+    echo "  gel-switch my-local-instance"
+}
+
+# Check if help is requested
+if [[ "$1" == "-h" || "$1" == "--help" ]]; then
+    show_help
+    exit 0
+fi
+
+LOCAL_INSTANCE="$1"
+
+# Get list of remote instances and unlink them automatically
+REMOTE_INSTANCES=$(gel instance list 2>/dev/null | grep "│ remote │" | awk -F'│' '{gsub(/^[ \t]+|[ \t]+$/, "", $3); print $3}' || true)
+
+if [[ -n "$REMOTE_INSTANCES" ]]; then
+    echo "Unlinking remote instances..."
+    echo "$REMOTE_INSTANCES" | while read -r instance; do
+        if [[ -n "$instance" ]]; then
+            gel instance unlink "$instance" 2>/dev/null || true
+        fi
+    done
+fi
+
+# Clear the GEL_INSTANCE environment variable
+unset GEL_INSTANCE
+
+# If local instance name is provided, try to reinitialize with it
+if [[ -n "$LOCAL_INSTANCE" ]]; then
+    if [[ -f "gel.toml" ]] || [[ -f "gelproject" ]]; then
+        if gel project init --link --server-instance "$LOCAL_INSTANCE"; then
+            echo "Linked project to local instance '${LOCAL_INSTANCE}'"
+        else
+            echo -e "${RED}Could not link to local instance '${LOCAL_INSTANCE}'${NC}"
+        fi
+    fi
+fi
+
+echo -e "${BLUE}Switched back to default instances${NC}"
